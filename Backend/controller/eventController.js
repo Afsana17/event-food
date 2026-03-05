@@ -3,6 +3,114 @@ const Venue = require('../models/venue');
 const Ticket = require('../models/ticket');
 const crypto = require('crypto');
 
+const DEFAULT_SPORT_EVENTS = [
+  {
+    _id: 'default-football',
+    name: 'Football Championship',
+    title: 'Football Championship',
+    description: 'Competitive football event at 5RINGS for all skill levels.',
+    sport: 'Football',
+    type: 'tournament',
+    eventType: 'tournament',
+    status: 'upcoming',
+    startDate: new Date('2026-04-12T16:00:00.000Z'),
+    endDate: new Date('2026-04-12T19:00:00.000Z'),
+    venue: { name: '5RINGS Main Arena' },
+    ticketPrice: 1800,
+    images: ['/events/football.jpg']
+  },
+  {
+    _id: 'default-cricket',
+    name: 'Cricket League Day',
+    title: 'Cricket League Day',
+    description: 'Cricket action with coaching guidance and match play opportunities.',
+    sport: 'Cricket',
+    type: 'match',
+    eventType: 'match',
+    status: 'upcoming',
+    startDate: new Date('2026-04-19T15:30:00.000Z'),
+    endDate: new Date('2026-04-19T19:30:00.000Z'),
+    venue: { name: '5RINGS Cricket Zone' },
+    ticketPrice: 1600,
+    images: ['/events/cricket.jpg']
+  },
+  {
+    _id: 'default-tennis',
+    name: 'Tennis Open Session',
+    title: 'Tennis Open Session',
+    description: 'Structured tennis sessions for juniors and adults.',
+    sport: 'Tennis',
+    type: 'camp',
+    eventType: 'camp',
+    status: 'upcoming',
+    startDate: new Date('2026-04-26T06:30:00.000Z'),
+    endDate: new Date('2026-04-26T09:30:00.000Z'),
+    venue: { name: '5RINGS Tennis Court' },
+    ticketPrice: 1400,
+    images: ['/5rings.jpg']
+  },
+  {
+    _id: 'default-kickboxing',
+    name: 'Kick Boxing Intensive',
+    title: 'Kick Boxing Intensive',
+    description: 'Kick boxing training and sparring sessions with expert coaches.',
+    sport: 'Kick boxing',
+    type: 'workshop',
+    eventType: 'workshop',
+    status: 'upcoming',
+    startDate: new Date('2026-05-03T10:00:00.000Z'),
+    endDate: new Date('2026-05-03T13:00:00.000Z'),
+    venue: { name: '5RINGS Combat Studio' },
+    ticketPrice: 1700,
+    images: ['/5rings.jpg']
+  },
+  {
+    _id: 'default-tabletennis',
+    name: 'Table Tennis Challenge',
+    title: 'Table Tennis Challenge',
+    description: 'Fast-paced table tennis challenge event for enthusiasts.',
+    sport: 'Table tennis',
+    type: 'tournament',
+    eventType: 'tournament',
+    status: 'upcoming',
+    startDate: new Date('2026-05-10T08:30:00.000Z'),
+    endDate: new Date('2026-05-10T12:00:00.000Z'),
+    venue: { name: '5RINGS Indoor Hall' },
+    ticketPrice: 1300,
+    images: ['/5rings.jpg']
+  },
+  {
+    _id: 'default-silambam',
+    name: 'Silambam Heritage Workshop',
+    title: 'Silambam Heritage Workshop',
+    description: 'Traditional Silambam training with foundational and advanced drills.',
+    sport: 'Silambam',
+    type: 'workshop',
+    eventType: 'workshop',
+    status: 'upcoming',
+    startDate: new Date('2026-05-17T07:00:00.000Z'),
+    endDate: new Date('2026-05-17T10:00:00.000Z'),
+    venue: { name: '5RINGS Outdoor Ground' },
+    ticketPrice: 1200,
+    images: ['/5rings.jpg']
+  },
+  {
+    _id: 'default-archery',
+    name: 'Arcery Precision Camp',
+    title: 'Arcery Precision Camp',
+    description: 'Archery fundamentals and precision rounds in a guided format.',
+    sport: 'Arcery',
+    type: 'camp',
+    eventType: 'camp',
+    status: 'upcoming',
+    startDate: new Date('2026-05-24T06:00:00.000Z'),
+    endDate: new Date('2026-05-24T09:00:00.000Z'),
+    venue: { name: '5RINGS Archery Range' },
+    ticketPrice: 1500,
+    images: ['/5rings.jpg']
+  }
+];
+
 // Create Event (Event Organizer only)
 exports.createEvent = async (req, res) => {
   try {
@@ -46,6 +154,7 @@ exports.createEvent = async (req, res) => {
       startDate: req.body.startDate,
       endDate: req.body.endDate,
       ticketCategories: req.body.ticketCategories,
+      images: Array.isArray(req.body.images) && req.body.images.length ? req.body.images : ['/5rings.jpg'],
       status: req.body.status || 'draft',
       venue: venueId,
       organizer: req.user.id,
@@ -75,8 +184,26 @@ exports.getAllEvents = async (req, res) => {
       .populate('organizer', 'name email organizerProfile')
       .populate('venue')
       .sort({ startDate: 1 });
+
+    const normalizedDbEvents = events.map((eventDoc) => {
+      const event = eventDoc.toObject();
+      return {
+        ...event,
+        name: event.name || event.title,
+        type: event.type || event.eventType,
+        ticketPrice: event.ticketPrice || event.ticketCategories?.[0]?.price || 0,
+      };
+    });
+
+    const existingSports = new Set(
+      normalizedDbEvents.map((event) => (event.sport || '').toLowerCase())
+    );
+
+    const defaultEvents = DEFAULT_SPORT_EVENTS.filter((event) => !existingSports.has((event.sport || '').toLowerCase()));
+
+    const allEvents = [...normalizedDbEvents, ...defaultEvents];
     
-    res.json({ success: true, events });
+    res.json({ success: true, events: allEvents });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
